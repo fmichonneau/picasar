@@ -1,9 +1,9 @@
 Package: picasar
-Title: What the Package Does (one line, title case)
+Title: A Minimalist Interface To Google Picasa Web
 Version: 0.0.0.9000
 Authors@R: person("Francois", "Michonneau", role=c("aut", "cre"),
                                 email="francois.michonneau@gmail.com")
-Description: What the package does (one paragraph).
+Description: Extract URLs and captions from Google Picasa album publicly available.
 Depends: R (>= 3.3.1)
 License: MIT + file LICENSE
 Encoding: UTF-8
