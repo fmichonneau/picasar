@@ -23,6 +23,7 @@ pic_album_list <- function(user = "francois.michonneau", ...) {
     attr(res, "uris") <- paste0("https://picasaweb.google.com/data/feed/api/user/",
                                attr(res, "user_id"),
                                "/albumid/", res$id)
+    attr(res, "thumbs") <- xml2::xml_text(xml2::xml_find_all(xml_res, ".//media:group/media:content/@url"))
     res
 }
 
@@ -39,23 +40,31 @@ pic_photo_list <- function(album_name, user = "francois.michonneau", ...) {
     captions <- xml2::xml_find_all(pht_xml, ".//media:group/media:description")
     captions <- xml2::xml_text(captions)
     album_title <- xml2::xml_text(xml2::xml_find_first(pht_xml, "//atom:feed/atom:title", ns = ns_res))
+    album_subtitle <- xml2::xml_text(xml2::xml_find_first(pht_xml, "//atom:feed/atom:subtitle", ns = ns_res))
     res <- data.frame(img_url = img_url,
                       caption = captions,
                       stringsAsFactors = FALSE)
     attr(res, "title") <- album_title
+    attr(res, "subtitle") <- album_subtitle
+    attr(res, "thumb") <-  xml2::xml_text(xml2::xml_find_first(pht_xml, "//d1:icon"))
     res
 }
 
-jekyll_gallery <- function(photo_list = pic_photo_list("WormsOtherThanAnnelida"),
-                           file = "/tmp/test-jekyll.md", excerpt = "") {
+jekyll_album <- function(photo_list, file) {
 
+    thumb <- attr(photo_list, "thumb")
+    teaser <- gsub("s160-c", "w800-o", thumb)
+    header <- gsub("s160-c", "s0", thumb)
     cat("--- \n",
         "layout: single \n",
         "title: \"", attr(photo_list, "title"), "\"\n",
         "date: ", format(Sys.Date(), "%Y-%m-%d"), "\n",
         "type: page \n",
         "status: publish \n",
-        "excerpt: ", excerpt, "\n",
+        "header: \n",
+        "  image: ", header, "\n",
+        "  teaser: ", teaser, "\n",
+        "excerpt: \"", attr(photo_list, "subtitle"), "\"\n",
         "gallery: \n", file = file, sep = "")
     apply(photo_list, 1, function(x) {
         full_url <- paste0(dirname(x[1]), "/s0/", basename(x[1]))
@@ -69,6 +78,50 @@ jekyll_gallery <- function(photo_list = pic_photo_list("WormsOtherThanAnnelida")
     })
     cat("---\n\n\n", file = file, append = TRUE)
 
-    cat("{% include gallery %}", file = file, append = TRUE)
+    cat("{% include gallery caption=\"", attr(photo_list, "subtitle"),
+        "\" %}", sep = "", file = file, append = TRUE)
     invisible(file)
+}
+
+
+jekyll_galleries <- function(album_list = c("5312413807524136849",
+                                            "5312422113847760993",
+                                            "5312418895206881137",
+                                            "5505966842882076545",
+                                            "Ectoprocta",
+                                            "Crinoidea",
+                                            "5946493914529070097",
+                                            "Cnidaria", "Mollusca",
+                                            "Annelida",
+                                            "DaintreeRainforestNationalPark",
+                                            "FloridaWildlife",
+                                            "MarineArthropods",
+                                            "AxolotlAmbystomaMexicanum",
+                                            "5946495710840975121",
+                                            "6310635656974481025",
+                                            "TerrestrialArthropods"),
+                             pages = c("fish", "holothuroidea",
+                                       "echinoidea", "urochordata",
+                                       "ectoprocta", "crinoidea",
+                                       "ophiuroidea", "cnidaria",
+                                       "mollusca", "annelida",
+                                       "daintree-rainforest",
+                                       "florida-wildlife",
+                                       "marine-arthropods",
+                                       "axolotl",
+                                       "worms-not-annelida",
+                                       "capitella-telata",
+                                       "terrestrial-arthropods"),
+                             path_photos = "~/Documents/fm.net_minimal/_photos") {
+
+    if (!identical(length(album_list), length(pages)))
+        stop(sQuote("album_list"), " and ", sQuote("pages"),
+             " must have the same length.")
+    else {
+        res <- mapply(function(alb, pg) {
+            jekyll_album(photo_list = pic_photo_list(alb),
+                         file = file.path(path_photos, paste0(pg, ".html")))
+        }, album_list, pages)
+        res
+    }
 }
